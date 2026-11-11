@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Conferência de Vendas Recebidas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#667085;--bd:#e2e5ea;--ac:#2563eb;--ok:#16a34a;--okb:#e8f7ee;--nf:#dc2626;--nfb:#fdecec;--pe:#b45309;--peb:#fff6e5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--card:#1d2128;--tx:#e8eaed;--mu:#98a2b3;--bd:#2c323b;--ac:#6d9cff;--ok:#4ade80;--okb:#16301f;--nf:#f87171;--nfb:#3a1b1b;--pe:#fbbf24;--peb:#33290f}}
+:root[data-theme="dark"]{--bg:#14171c;--card:#1d2128;--tx:#e8eaed;--mu:#98a2b3;--bd:#2c323b;--ac:#6d9cff;--ok:#4ade80;--okb:#16301f;--nf:#f87171;--nfb:#3a1b1b;--pe:#fbbf24;--peb:#33290f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:none;margin:0 auto;padding:12px}
+h1{font-size:20px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mu);gap:3px}
+input,select,button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:7px;padding:7px 9px}
+button{cursor:pointer}button:hover{border-color:var(--ac)}
+.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.st{border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+.st small{color:var(--mu);display:block;font-size:11px}.st b{font-size:17px}
+.st.ok{background:var(--okb)}.st.nf{background:var(--nfb)}.st.pe{background:var(--peb)}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 5px;border-bottom:1px solid var(--bd);text-align:left}
+th{font-size:11px;color:var(--mu);text-transform:uppercase;position:sticky;top:0;background:var(--card)}
+td.n,th.n{text-align:right}td.n{white-space:nowrap}
+tr.ok td{background:var(--okb)}tr.nf td{background:var(--nfb)}
+.b{padding:3px 6px;font-size:12px}
+.b.ok.on{background:var(--ok);color:#fff;border-color:var(--ok)}
+.b.nf.on{background:var(--nf);color:#fff;border-color:var(--nf)}
+.tag{font-size:12px;font-weight:600}.tag.ok{color:var(--ok)}.tag.nf{color:var(--nf)}.tag.pe{color:var(--pe)}
+.diff{font-weight:700}
+.mu{color:var(--mu)}
+#drop{border:2px dashed var(--bd);border-radius:10px;padding:28px;text-align:center;color:var(--mu)}
+</style>
+</head>
+<body>
+<main>
+<h1>Conferência de vendas recebidas</h1>
+
+<div class="card" id="drop">
+  <p><b>Selecione o relatório CSV</b> (vendas recebidas detalhadas)</p>
+  <input type="file" id="file" accept=".csv,text/csv">
+  <p>ou <button id="bkL0">📂 Carregar progresso completo (arquivo .json salvo antes)</button><input type="file" id="bkF0" accept=".json" hidden></p>
+  <p class="mu" id="msg">Os dados ficam só no seu navegador. As marcações são salvas automaticamente.</p>
+</div>
+
+<div id="app" hidden>
+  <div class="card" id="fCard">
+    <div class="row">
+      <label>Data do pagamento (dia que caiu no banco)<select id="fDate"></select></label>
+      <label>Estabelecimento<select id="fEst"></select></label>
+      <label>Unidade<select id="fTerm"></select></label>
+      <label>Forma<select id="fForma"><option value="">Todas</option><option>Débito</option><option>Crédito</option><option>Pix</option></select></label>
+      <label>Situação<select id="fSt"><option value="">Todas</option><option value="pe">Pendentes</option><option value="ok">Encontradas</option><option value="nf">Não encontradas</option></select></label>
+      <label style="flex:1;min-width:200px">Buscar (valor, autorização, unidade)<input id="fQ" placeholder="ex: 139,03 ou 548815"></label>
+    </div>
+  </div>
+
+  <div class="row" style="margin-bottom:10px"><button class="pri" id="tab1">Cartão</button><button id="tab4">Pix</button><button id="tab3">Conciliação bancária</button><button id="tab2">Resumo por unidade</button><span style="flex:1"></span><span class="mu" id="bkM"></span><button id="bkS">💾 Salvar progresso</button><button id="bkL">📂 Carregar progresso</button><input type="file" id="bkF" accept=".json" hidden></div>
+  <div class="card tc">
+    <div class="stats" id="stats"></div>
+    <div class="row" style="margin-top:10px">
+      <label>Valor que caiu no banco (R$)<input id="bank" inputmode="decimal" placeholder="0,00"></label>
+      <div id="bankRes" class="diff"></div>
+    </div>
+  </div>
+
+  <div class="card" id="tabRes" hidden>
+    <b>Resumo por unidade</b> <span class="mu">(segue todos os filtros acima; vendas estornadas não entram; o Pix vem do relatório carregado na aba Pix)</span>
+    <div class="wrap" style="margin-top:8px"><table id="rs"></table></div>
+    <b style="display:block;margin-top:16px">Vendas no crédito por quantidade de parcelas</b>
+    <span class="mu">Cada venda conta uma vez, mesmo que tenha várias parcelas no período filtrado.</span>
+    <div class="wrap" style="margin-top:6px"><table id="rs2"></table></div>
+  </div>
+
+  <div id="tabCon" hidden>
+    <div class="card">
+      <div class="row">
+        <label>Extrato do banco (Sicoob, PDF)<input type="file" id="fBank" accept=".pdf"></label>
+        <label>Extrato do Unilab (PDF)<input type="file" id="fUni" accept=".pdf"></label>
+      </div>
+      <details style="margin-top:8px"><summary class="mu">Se o PDF não abrir, cole o texto dele aqui</summary>
+        <textarea id="pB" rows="3" placeholder="Texto do extrato do banco" style="width:100%"></textarea>
+        <textarea id="pU" rows="3" placeholder="Texto do extrato do Unilab" style="width:100%"></textarea>
+        <button id="pGo">Ler texto colado</button></details>
+      <p class="mu" id="cMsg">Carregue os dois extratos (banco e Unilab) do mesmo dia.</p>
+    </div>
+    <div id="cTop"></div>
+    <div class="card" id="cList" hidden>
+      <div class="row" style="margin-bottom:8px">
+        <label>Tipo<select id="cT"><option value="">Todos</option><option value="cartao">Cartão</option><option value="pix">Pix / outros créditos</option><option value="transf">Transf. própria</option><option value="deb">Débitos</option></select></label>
+        <label>Situação<select id="cS"><option value="">Todas</option><option value="pe">Pendentes</option><option value="ok">Encontrados</option><option value="nf">Não encontrados</option></select></label>
+        <button id="cAll">✔ Marcar visíveis como encontrados</button>
+        <button id="cSug">✔ Aceitar sugestões de cartão</button>
+      </div>
+      <div class="wrap"><table id="cTb"></table></div>
+    </div>
+  </div>
+
+
+  <div class="card tc">
+    <div class="row" style="margin-bottom:8px">
+      <label>Ordenar<select id="fOrd"><option value="">Padrão do relatório</option><option value="liq|desc">Valor líquido: maior → menor</option><option value="liq|asc">Valor líquido: menor → maior</option><option value="dt|desc">Data/hora: mais recente primeiro</option><option value="dt|asc">Data/hora: mais antiga primeiro</option></select></label>
+      <label>Pesquisar AUT<input id="fAut" inputmode="numeric" placeholder="nº da autorização" style="width:180px"></label>
+      <button id="allOk">✔ Marcar visíveis como encontradas</button>
+      <button id="clr">↺ Limpar marcações visíveis</button>
+      <button id="exp" class="pri">📋 Copiar tabela conferida</button>
+      <span class="mu" id="cnt"></span>
+    </div>
+    <textarea id="out" hidden rows="6" style="width:100%;margin-bottom:8px"></textarea>
+    <div class="wrap"><table>
+      <thead><tr><th>Data/hora</th><th>CB</th><th>Unidade</th><th>FP</th><th>Parcelas</th><th>AUT</th><th class="n">Valor bruto</th><th class="n">Valor líquido</th><th>Situação</th><th>Ação</th></tr></thead>
+      <tbody id="tb"></tbody>
+    </table></div>
+  </div>
+
+  <div id="tabPix" hidden>
+    <div class="card">
+      <div class="row"><label>Relatório de vendas Pix (CSV)<input type="file" id="fPix" accept=".csv"></label></div>
+      <p class="mu" id="xMsg">Carregue o CSV de Pix. Para achar o crédito de cada venda no banco, carregue também os extratos na aba Conciliação bancária.</p>
+    </div>
+    <div id="xTop"></div>
+    <div class="card" id="xList" hidden>
+      <div class="row" style="margin-bottom:8px">
+        <label>Situação<select id="xS"><option value="">Todas</option><option value="pe">Pendentes</option><option value="ok">Encontrados</option><option value="nf">Não encontrados</option></select></label>
+        <label style="flex:1;min-width:200px">Buscar (nome ou valor)<input id="xQ" placeholder="ex: MARIA ou 843,75"></label>
+        <button id="xAll">✔ Marcar visíveis como encontrados</button>
+      </div>
+      <div class="wrap"><table id="xTb"></table></div>
+      <div id="xOrW" hidden style="margin-top:14px"><b>Créditos do banco sem venda no relatório Pix</b>
+        <div class="wrap" style="margin-top:6px"><table id="xOr"></table></div></div>
+    </div>
+  </div>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const BRL=n=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const money=s=>{s=(s||'').replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.');return parseFloat(s)||0};
+const norm=s=>(s||'').toLowerCase().replace(/\s+/g,' ');
+let rows=[],marks={},fileKey='conf:v1';
+try{marks=JSON.parse(localStorage.getItem(fileKey)||'{}')}catch(e){marks={}}
+const save=()=>{try{localStorage.setItem(fileKey,JSON.stringify(marks))}catch(e){}};
+
+const UN={'86910001':'LINK'};
+[['MATRIZ',['20532863','20741335','20532874']],['OURO PRETO',['20532271']],['MEDICI',['20941827']],['T23',['20532870']],['22 DE NOV',['20532869']],['ROLIM DE MOURA',['20532866','20741337']],['KIDS',['20532867']],['MARINGA',['20533599','20918581']],['T14',['20938833']],['ALVORADA',['20741334']],['JARU',['21161579']],['ESPAÇO SAUDE',['20538985']]].forEach(([n,ts])=>ts.forEach(t=>UN[t]=n));
+let EXC=0;
+function parse(text){EXC=0;
+  const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);
+  const hi=lines.findIndex(l=>l.startsWith('Nº do estabelecimento'));
+  if(hi<0)throw new Error('Cabeçalho não encontrado. É o relatório correto?');
+  const h=lines[hi].split(';'),ix=n=>h.indexOf(n),out=[];
+  for(const l of lines.slice(hi+1)){
+    const c=l.split(';');
+    if(c.length<20||!/^\d\d\/\d\d\/\d{4}/.test(c[ix('Data da transação')]||''))continue;
+    const g=n=>(c[ix(n)]||'').trim();
+    const r={est:g('Nº do estabelecimento'),dt:g('Data da transação'),nsu:g('Nº da transação'),id:g('ID Venda').replace('RRN: ',''),
+      term:g('Número do terminal'),plano:g('Plano de venda'),tp:g('Total de parcela'),band:g('Bandeira'),forma:g('Forma de Pagamento'),parc:g('Parcela')+'/'+g('Total de parcela'),aut:g('Número da autorização'),
+      card:g('Número do cartão'),pag:g('Data do pagamento'),canc:g('Indicador de cancelamento da venda'),
+      bruto:money(g('Valor parcela bruto')),liq:money(g('Valor parcela liquido'))};
+    r.unid=UN[r.term]||r.term;r.key=[r.est,r.nsu,r.parc,r.pag].join('|');
+    if(r.term==='-'){EXC++}else out.push(r);
+  }
+  return out;
+}
+const dkey=d=>d.split('/').reverse().join('');
+function fill(sel,vals,all){sel.innerHTML=(all?`<option value="">${all}</option>`:'')+vals.map(v=>`<option>${v}</option>`).join('')}
+
+$('file').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    rows=parse(await f.text());
+    if(!rows.length)throw new Error('Nenhuma venda encontrada no arquivo.');
+    const dates=[...new Set(rows.map(r=>r.pag))].sort((a,b)=>dkey(b).localeCompare(dkey(a)));
+    fill($('fDate'),dates,'Todas as datas');
+    fill($('fEst'),[...new Set(rows.map(r=>r.est))],'Todos');
+    fill($('fTerm'),[...new Set(rows.map(r=>r.unid))].sort(),'Todas');
+    $('app').hidden=false;$('msg').textContent=`${f.name} — ${rows.length} lançamentos carregados (${EXC} estornados ignorados).`;
+    render();
+  }catch(err){$('msg').textContent='Erro: '+err.message}
+};
+
+function visible(){
+  const d=$('fDate').value,e=$('fEst').value,t=$('fTerm').value,fo=$('fForma').value,s=$('fSt').value,q=norm($('fQ').value);
+  return rows.filter(r=>{
+    if(d&&r.pag!==d)return false;if(e&&r.est!==e)return false;if(t&&r.unid!==t)return false;if(fo&&r.forma!==fo)return false;
+    if(CT===1&&$('fAut').value.trim()&&!r.aut.includes($('fAut').value.trim()))return false;const m=marks[r.key]||'pe';if(s&&m!==s)return false;
+    if(q){const hay=norm([r.term,r.unid,r.est.replace('CB-','').slice(0,4),r.aut,r.dt,r.forma,r.liq.toFixed(2).replace('.',','),r.bruto.toFixed(2).replace('.',',')].join(' '));if(!hay.includes(q))return false}
+    return true;
+  });
+}
+const sum=(a,k)=>a.reduce((t,r)=>t+r[k],0);
+const sortV=a=>{const o=$('fOrd').value;if(!o)return a;const [k,dir]=o.split('|'),f={liq:r=>r.liq,dt:r=>{const m=r.dt.match(/(\d+)\/(\d+)\/(\d+) (\d+):(\d+):(\d+)/);return m?Number(m[3]+m[2]+m[1]+m[4]+m[5]+m[6]):0}}[k];return a.slice().sort((x,y)=>dir==='asc'?f(x)-f(y):f(y)-f(x))};
+function render(){
+  const v=sortV(visible()),by=s=>v.filter(r=>(marks[r.key]||'pe')===s);
+  const ok=by('ok'),nf=by('nf'),pe=by('pe');
+  $('stats').innerHTML=[
+    ['','Vendas (filtro)',v.length+' · '+BRL(sum(v,'liq'))],
+    ['','Bruto',BRL(sum(v,'bruto'))],
+    ['','Líquido esperado',BRL(sum(v,'liq'))],
+    ['ok','Encontradas',ok.length+' · '+BRL(sum(ok,'liq'))],
+    ['nf','Não encontradas',nf.length+' · '+BRL(sum(nf,'liq'))],
+    ['pe','Pendentes',pe.length+' · '+BRL(sum(pe,'liq'))]
+  ].map(x=>`<div class="st ${x[0]}"><small>${x[1]}</small><b>${x[2]}</b></div>`).join('');
+  const bank=money($('bank').value),has=$('bank').value.trim()!=='';
+  if(has){const diff=bank-sum(v,'liq');$('bankRes').innerHTML=Math.abs(diff)<0.005?'<span class="tag ok">✔ Bate com o esperado</span>':`<span class="tag nf">Diferença vs. esperado: ${BRL(diff)}</span>`}else $('bankRes').textContent='';
+  $('cnt').textContent=`${v.length} linhas`;renderRes();
+  $('tb').innerHTML=v.map((r,i)=>{const m=marks[r.key]||'pe';
+    return `<tr class="${m}"><td>${r.dt}</td><td>${r.est.replace('CB-','').slice(0,4)}</td><td>${r.unid}</td><td>${r.forma}</td><td>${r.forma==='Débito'?'—':(parseInt(r.tp)||1)+'x / '+(parseInt(r.parc)||1)}</td><td>${r.aut}</td>
+    <td class="n">${BRL(r.bruto)}</td><td class="n"><b>${BRL(r.liq)}</b></td>
+    <td><span class="tag ${m}">${{ok:'Encontrada',nf:'Não encontrada',pe:'Pendente'}[m]}</span></td>
+    <td><button class="b ok ${m==='ok'?'on':''}" data-k="${r.key}" data-m="ok">✔ Encontrada</button> <button class="b nf ${m==='nf'?'on':''}" data-k="${r.key}" data-m="nf">✖ Não encontrada</button></td></tr>`}).join('');
+}
+function renderRes(){
+  const vis=new Set(visible()),cx={},U={},V={},Z=()=>({n:0,d:0,c:0,cv:0,cp:0,bd:0,bc:0,px:0,pv:0});
+  rows.forEach(r=>{if(r.canc!=='000'){const k=r.nsu+'|'+r.parc+'|'+Math.abs(r.bruto);cx[k]=(cx[k]||0)+1}});
+  rows.forEach(r=>{
+    if(!vis.has(r)||r.canc!=='000')return;
+    const k=r.nsu+'|'+r.parc+'|'+Math.abs(r.bruto);if(cx[k]>0){cx[k]--;return}
+    const u=U[r.unid]=U[r.unid]||Z();
+    u.n++;
+    if(r.forma==='Débito'){u.d++;u.bd+=r.bruto}else{u.c++;u.bc+=r.bruto;if(/parcel/i.test(r.plano))u.cp++;else u.cv++;const tp=parseInt(r.tp)||1,vv=V[r.unid]=V[r.unid]||{};(vv[tp]=vv[tp]||new Set()).add(r.est+'|'+r.nsu+'|'+r.dt)}
+  });
+  if(PX){const d=$('fDate').value,e=$('fEst').value,t=$('fTerm').value,fo=$('fForma').value,sf=$('fSt').value;
+    PX.forEach(p=>{const un=UN[p.term]||p.term;if((fo&&fo!=='Pix')||(d&&p.dt.slice(0,10)!==d)||(e&&p.est!==e)||(t&&un!==t)||(sf&&xs(p)!==sf))return;const u=U[un]=U[un]||Z();u.px++;u.pv+=p.v})}
+  const L=Object.entries(U).sort((a,b)=>(b[1].n+b[1].px)-(a[1].n+a[1].px));
+  if(!L.length){$('rs').innerHTML='';$('rs2').innerHTML='';return}
+  const T=L.reduce((t,[,u])=>{for(const k in u)t[k]+=u[k];return t},Z());
+  const p=(x,n)=>n?(x/n*100).toFixed(1).replace('.',',')+'%':'—';
+  const tr=(nm,u,b)=>`<tr${b?' style="font-weight:700"':''}><td>${nm}</td><td class="n">${u.n}</td><td class="n">${u.d}</td><td class="n">${p(u.d,u.n)}</td><td class="n">${u.c}</td><td class="n">${p(u.c,u.n)}</td><td class="n">${u.cv}</td><td class="n">${u.cp}</td><td class="n">${BRL(u.bd)}</td><td class="n">${BRL(u.bc)}</td><td class="n">${u.px}</td><td class="n">${BRL(u.pv)}</td><td class="n">${BRL(u.bd+u.bc+u.pv)}</td></tr>`;
+  $('rs').innerHTML='<thead><tr><th>Unidade</th><th class="n">Lançamentos</th><th class="n">Débito</th><th class="n">% Débito</th><th class="n">Crédito</th><th class="n">% Crédito</th><th class="n">Crédito à vista</th><th class="n">Crédito parcelado (parcelas)</th><th class="n">Bruto débito</th><th class="n">Bruto crédito</th><th class="n">Pix (vendas)</th><th class="n">Valor Pix</th><th class="n">Total bruto (déb + créd + Pix)</th></tr></thead><tbody>'+L.map(([n,u])=>tr(n,u)).join('')+tr('TOTAL',T,1)+'</tbody>';
+  const mx=Math.max(1,...Object.values(V).flatMap(o=>Object.keys(o).map(Number))),cols=Array.from({length:mx},(_,i)=>i+1),tt={};
+  const cn=o=>Object.fromEntries(Object.entries(o).map(([k,s])=>[k,s.size]));
+  const rv=(nm,o,b)=>`<tr${b?' style=font-weight:700':''}><td>${nm}</td>${cols.map(c=>`<td class=n>${o[c]||0}</td>`).join('')}<td class=n>${Object.values(o).reduce((t,x)=>t+x,0)}</td></tr>`;
+  const r2=L.map(([n])=>[n,cn(V[n]||{})]);r2.forEach(([,o])=>cols.forEach(c=>tt[c]=(tt[c]||0)+(o[c]||0)));
+  $('rs2').innerHTML='<thead><tr><th>Unidade</th>'+cols.map(c=>`<th class=n>${c===1?'À vista (1x)':c+'x'}</th>`).join('')+'<th class=n>Total vendas crédito</th></tr></thead><tbody>'+r2.map(([n,o])=>rv(n,o)).join('')+rv('TOTAL',tt,1)+'</tbody>';
+}
+/* ===== Conciliação bancária ===== */
+const D2=s=>Math.round(parseFloat(s.replace(/\./g,'').replace(',','.'))*100)/100;
+const MR=/-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2}/g;
+const SKIP=/HIST[ÓO]RICO DE MOV|^DATA\s+HIST|PLATAFORMA|SISTEMA DE COOP|^SICOOB$|^COOP\.|^CONTA:|^PER[ÍI]ODO|EXTRATO CONTA|Impresso em|UNILAB|^BANCO:|LANCAMENTOS|^Data\s+Documento|Informamos|primeiro laborat|certifica|nenhuma n|Implementa|SALDO ANTERIOR/i;
+let BK=null,UX=null,CARD={rec:0,tax:0,net:0};
+const TL={cartao:'Cartão',pix:'Pix / outros créditos',transf:'Transf. própria',deb:'Débito'};
+async function pdfLines(f){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,out=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const it=(await(await pdf.getPage(p)).getTextContent()).items.filter(i=>i.str.trim()).sort((a,b)=>b.transform[5]-a.transform[5]),L=[];
+    it.forEach(i=>{const l=L.find(l=>Math.abs(l.y-i.transform[5])<3);l?l.t.push(i):L.push({y:i.transform[5],t:[i]})});
+    L.forEach(l=>out.push(l.t.sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str.trim()).join(' ')));
+  }
+  return out;
+}
+function parseBank(L0){
+  const L=[];L0.forEach((l,i)=>{if(/^\d{1,3}(?:\.\d{3})*,\d\d$/.test(l)&&/^\d\d\/\d\d\s/.test(L0[i+1]||''))L0[i+1]+=' '+l;else L.push(l)});
+  const T=L.join('\n'),yr=(T.match(/PER[ÍI]ODO:\s*\d\d\/\d\d\/(\d{4})/)||[])[1]||new Date().getFullYear();
+  const sg=m=>m?(m[2]==='D'?-1:1)*D2(m[1]):null;
+  const sa=sg(T.match(/SALDO ANTERIOR\s+([\d.]+,\d\d)\s*([CD])?/)),sf=sg(T.match(/SALDO DO DIA\s+([\d.]+,\d\d)\s*([CD])/));
+  const R=[];let cur=null;
+  for(const l of L){
+    if(/SALDO DO DIA/.test(l))break;
+    if(/^\d\d\/\d\d\s/.test(l)){cur=/SALDO/.test(l)?null:{t:l};if(cur)R.push(cur)}
+    else if(cur&&!SKIP.test(l))cur.t+=' '+l;
+  }
+  const E=[],n={};
+  R.forEach(r=>{
+    const m=r.t.match(/^(\d\d\/\d\d)\s+(.+?)\s+([\d.]+,\d\d)\s*([CD])\b\s*(.*)$/);if(!m)return;
+    const v=D2(m[3]),dc=m[4],det=m[5].replace(/DOC\.:.*$/,'').replace(/Recebimento Pix|Transfer[êe]ncia Pix|Pagamento Pix|REM\.:/g,'').replace(/\s+/g,' ').trim();
+    const cat=dc==='D'?'deb':/SIPAG/i.test(r.t)?'cartao':/WKM DIAGNOSTICO/i.test(m[5])?'transf':'pix',k=m[1]+'|'+dc+v;n[k]=(n[k]||0)+1;
+    E.push({key:'cb|'+yr+'|'+k+'|'+n[k],d:m[1]+'/'+yr,dc,v,s:dc==='C'?v:-v,cat,desc:(m[2]+' '+det).slice(0,80),forma:/SIPAG_Deb/i.test(r.t)?'Débito':'Crédito'});
+  });
+  return{E,sa:sa??0,sf};
+}
+function parseUni(L){
+  const T=L.join('\n'),sm=T.match(/SALDO ANTERIOR:\s*R\$\s*(-?[\d.]+,\d\d)/);let prev=sm?D2(sm[1]):0;const sa=prev,R=[];let cur=null;
+  for(const l of L){
+    if(/^\d\d\/\d\d\/\d{4}\s/.test(l)){cur={t:l};R.push(cur)}
+    else if(cur&&!SKIP.test(l))cur.t+=' '+l;
+  }
+  const E=[];
+  R.forEach(r=>{
+    const n=r.t.match(MR);if(!n||n.length<2)return;
+    const v=D2(n[n.length-2]),s=D2(n[n.length-1]),dc=Math.abs(prev+v-s)<.006?'C':'D';prev=s;
+    E.push({v:Math.abs(v),dc,h:r.t.replace(/\d\d\/\d\d\/\d{4}/g,'').replace(MR,'').replace(/\s+/g,' ').trim()});
+  });
+  return{E,sa,sf:prev};
+}
+function match(){
+  const B=BK.E,U=UX.E.map(u=>({...u,used:/CT OPER/.test(u.h)})),fr=()=>U.filter(u=>!u.used);
+  B.forEach(b=>{b.auto=0;b.uni='';b.sug='';b.rows=null});
+  B.filter(b=>b.cat==='deb'||b.cat==='transf').forEach(b=>{const u=fr().find(u=>u.dc===b.dc&&Math.abs(u.v-b.v)<.006);if(u){u.used=1;b.auto=1;b.uni=u.h.slice(0,40)}});
+  B.filter(b=>b.cat==='deb'&&!b.auto).forEach(b=>{
+    const c=fr().filter(u=>u.dc==='D'&&u.v<b.v).slice(0,20),t=Math.round(b.v*100);let hit=null;
+    const go=(i,s,a)=>{if(hit||s>t)return;if(s===t&&a.length>1){hit=a;return}if(i>=c.length||a.length>=8)return;go(i+1,s+Math.round(c[i].v*100),a.concat(i));go(i+1,s,a)};
+    go(0,0,[]);if(hit){hit.forEach(i=>c[i].used=1);b.auto=1;b.uni=hit.length+' lançamentos somados'}
+  });
+  const g=r=>U.filter(u=>r.test(u.h)).reduce((t,u)=>t+u.v,0);
+  CARD={rec:g(/RECEB CT OPER/),tax:g(/TAXAS CT OPER/)};CARD.net=CARD.rec-CARD.tax;
+  const grp={},tk={};rows.forEach(r=>{const k=r.pag+'|'+r.est+'|'+r.forma+'|'+r.band;grp[k]=(grp[k]||0)+r.liq});
+  B.filter(b=>b.cat==='cartao').forEach(b=>{const f=Object.entries(grp).find(([k,v])=>!tk[k]&&k.startsWith(b.d+'|')&&k.split('|')[2]===b.forma&&Math.abs(v-b.v)<.006);if(f){tk[f[0]]=1;b.rows=rows.filter(r=>r.pag+'|'+r.est+'|'+r.forma+'|'+r.band===f[0]);const p=f[0].split('|');b.sug='CB '+p[1].replace('CB-','').slice(0,4)+' · '+p[2]+' · '+p[3]}});
+}
+
+const cst=b=>{const m=b.rows.map(r=>marks[r.key]);return m.every(x=>x==='ok')?'ok':m.includes('nf')?'nf':'pe'};
+const stOf=b=>marks[b.key]||(b.auto?'ok':b.rows?cst(b):'pe');
+const cv=b=>stOf(b)==='ok'?b.s:(b.rows&&stOf(b)==='pe'?b.rows.reduce((t,r)=>t+(marks[r.key]==='ok'?r.liq:0),0):0);
+const cVis=()=>BK.E.map(b=>[b,stOf(b)]).filter(([b,s])=>(!$('cT').value||b.cat===$('cT').value)&&(!$('cS').value||s===$('cS').value));
+function cView(){
+  const B=BK.E,S=f=>B.filter(f).reduce((t,b)=>t+b.s,0),mov=S(()=>1),conc=B.reduce((t,b)=>t+cv(b),0),pend=B.reduce((t,b)=>t+(stOf(b)==='pe'?b.s-cv(b):0),0),nf=S(b=>stOf(b)==='nf');
+  const sf=BK.sf??BK.sa+mov,sc=BK.sa+conc,dif=sf-sc,z=x=>Math.abs(x)<.006,bc=S(b=>b.cat==='cartao');
+  const cat=c=>{const L=B.filter(b=>b.cat===c);if(!L.length)return'';const t=L.reduce((a,b)=>a+b.s,0),o=L.reduce((a,b)=>a+cv(b),0);return `<tr><td>${TL[c]}</td><td class='n'>${L.length}</td><td class='n'>${BRL(t)}</td><td class='n'>${BRL(o)}</td><td class='n tag ${z(t-o)?'ok':'nf'}'>${BRL(t-o)}</td></tr>`};
+  $('cTop').innerHTML=`<div class='card'><div class='stats'>
+  <div class='st'><small>Saldo anterior (banco)</small><b>${BRL(BK.sa)}</b></div>
+  <div class='st'><small>Saldo final (extrato bancário)</small><b>${BRL(sf)}</b></div>
+  <div class='st ok'><small>Saldo conciliado</small><b>${BRL(sc)}</b></div>
+  <div class='st ${z(dif)?'ok':'nf'}'><small>Diferença para o extrato</small><b>${BRL(dif)}</b></div>
+  <div class='st pe'><small>Pendentes</small><b>${BRL(pend)}</b></div>
+  <div class='st nf'><small>Não encontrados</small><b>${BRL(nf)}</b></div></div>
+  <p>Unilab: saldo final ${BRL(UX.sf)} · <b>falta lançar no Unilab: ${BRL(sf-UX.sf)}</b><br>Cartão no Unilab: recebido ${BRL(CARD.rec)} − taxas ${BRL(CARD.tax)} = ${BRL(CARD.net)} · extrato ${BRL(bc)} ${z(CARD.net-bc)?'✔ confere':'✖ diferença de '+BRL(bc-CARD.net)}</p>
+  <div class='wrap'><table><thead><tr><th>Tipo</th><th class='n'>Lanç.</th><th class='n'>Extrato</th><th class='n'>Conciliado</th><th class='n'>Falta</th></tr></thead><tbody>${['cartao','pix','transf','deb'].map(cat).join('')}</tbody></table></div></div>`;
+  $('cTb').innerHTML=`<thead><tr><th>Data</th><th>Tipo</th><th>Histórico / origem</th><th class='n'>Valor</th><th>No Unilab</th><th>Sugestão (rel. de cartão)</th><th>Situação</th><th>Ação</th></tr></thead><tbody>`+cVis().map(([b,s])=>`<tr class='${s}'><td>${b.d.slice(0,5)}</td><td>${TL[b.cat]}</td><td>${b.desc}</td><td class='n'>${BRL(b.s)}</td><td>${b.cat==='cartao'?'no total (líquido)':b.auto?'✔ '+b.uni:'✖ falta lançar'}</td><td>${b.sug||''}${b.rows?` <span class='mu'>(${b.rows.filter(r=>marks[r.key]==='ok').length}/${b.rows.length} vendas conferidas)</span>`:''}</td><td><span class='tag ${s}'>${{ok:'Encontrado',nf:'Não encontrado',pe:'Pendente'}[s]}</span></td><td><button class='b ok ${s==='ok'?'on':''}' data-k='${b.key}' data-m='ok'>✔ Encontrado</button> <button class='b nf ${s==='nf'?'on':''}' data-k='${b.key}' data-m='nf'>✖ Não encontrado</button></td></tr>`).join('')+'</tbody>';
+}
+async function cLoad(kind,file,text){
+  try{
+    const L=text?text.split(/\r?\n/):await pdfLines(file);
+    if(kind==='b'){BK=parseBank(L);if(!BK.E.length)throw new Error('nenhum lançamento do banco foi lido')}
+    else{UX=parseUni(L);if(!UX.E.length)throw new Error('nenhum lançamento do Unilab foi lido')}
+    $('cMsg').textContent='Banco: '+(BK?BK.E.length+' lançamentos':'aguardando')+' · Unilab: '+(UX?UX.E.length+' lançamentos':'aguardando');
+    if(BK&&UX){match();$('cList').hidden=false;cView()}if(PX){pixMatch();xView()}
+  }catch(err){$('cMsg').textContent='Erro ao ler: '+err.message+'. Se for o PDF, cole o texto dele na caixa abaixo.'}
+}
+$('fBank').onchange=e=>e.target.files[0]&&cLoad('b',e.target.files[0]);
+$('fUni').onchange=e=>e.target.files[0]&&cLoad('u',e.target.files[0]);
+$('pGo').onclick=async()=>{if($('pB').value.trim())await cLoad('b',0,$('pB').value);if($('pU').value.trim())await cLoad('u',0,$('pU').value)};
+['cT','cS'].forEach(i=>$(i).onchange=()=>BK&&UX&&cView());
+$('cTb').onclick=e=>{const x=e.target.closest('button');if(!x)return;const k=x.dataset.k;if(marks[k]===x.dataset.m)delete marks[k];else marks[k]=x.dataset.m;save();cView()};
+$('cAll').onclick=()=>{cVis().forEach(([b])=>{if(!marks[b.key])marks[b.key]='ok'});save();cView()};
+$('cSug').onclick=()=>{BK.E.filter(b=>b.sug).forEach(b=>{if(!marks[b.key])marks[b.key]='ok'});save();cView()};
+/* ===== Aba Pix ===== */
+let PX=null;
+const nz=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+function parsePix(text){
+  const L=text.replace(/^\uFEFF/,'').split(/\r?\n/),hi=L.findIndex(l=>l.startsWith('Estabelecimento;Data da Venda'));
+  if(hi<0)throw new Error('cabeçalho do relatório Pix não encontrado');
+  const h=L[hi].split(';'),ix=n=>h.indexOf(n),E=[];
+  L.slice(hi+1).forEach(l=>{const c=l.split(';');if(c.length<8||c[0]==='Total')return;const g=n=>(c[ix(n)]||'').trim();
+    E.push({est:g('Estabelecimento'),dt:g('Data da Venda'),cod:g('Código da Transação'),term:g('Nº Terminal'),nome:g('Nome do Pagador'),re:g('Valor Reembolsado')==='-'?0:money(g('Valor Reembolsado')),v:money(g('Valor da Venda'))})});
+  return E;
+}
+function pixMatch(){
+  PX.forEach(p=>{p.b=null;p.kind=''});PX.orph=[];if(!BK)return;
+  const fr=BK.E.filter(b=>b.cat==='pix'),used=new Set();
+  const pass=(f,k)=>PX.forEach(p=>{if(p.b)return;const b=fr.find(b=>!used.has(b)&&Math.abs(b.v-p.v)<.006&&f(b,p));if(b){used.add(b);p.b=b;p.kind=k}});
+  pass((b,p)=>nz(b.desc).includes(nz(p.nome).slice(0,12)),'nome');pass(()=>true,'valor');
+  PX.orph=fr.filter(b=>!used.has(b));
+  PX.forEach(p=>{const k='px|'+p.cod;if(p.b&&marks[k]){if(!marks[p.b.key])marks[p.b.key]=marks[k];delete marks[k];save()}});
+}
+
+const xs=p=>p.b?stOf(p.b):(marks['px|'+p.cod]||'pe'),xk=p=>p.b?p.b.key:'px|'+p.cod;
+const SN={ok:'Encontrado',nf:'Não encontrado',pe:'Pendente'};
+const btn=(k,s)=>`<button class='b ok ${s==='ok'?'on':''}' data-k='${k}' data-m='ok'>✔ Encontrado</button> <button class='b nf ${s==='nf'?'on':''}' data-k='${k}' data-m='nf'>✖ Não encontrado</button>`;
+function xVis(){const S=$('xS').value,Q=nz($('xQ').value);return PX.map(p=>[p,xs(p)]).filter(([p,s])=>(!S||s===S)&&(!Q||nz(p.nome+' '+p.v.toFixed(2).replace('.',',')).includes(Q)))}
+function xView(){
+  const T=PX,st=T.map(xs),sum=s=>T.filter((p,i)=>st[i]===s).reduce((t,p)=>t+p.v,0),cnt=s=>st.filter(x=>x===s).length;
+  const tot=T.reduce((t,p)=>t+p.v,0),re=T.reduce((t,p)=>t+p.re,0),sem=BK?T.filter(p=>!p.b).length:0,nb=PX.orph.reduce((t,b)=>t+b.v,0);
+  $('xTop').innerHTML=`<div class='card'><div class='stats'>
+  <div class='st'><small>Vendas Pix (relatório)</small><b>${T.length} · ${BRL(tot)}</b></div>
+  <div class='st'><small>Reembolsos</small><b>${BRL(re)}</b></div>
+  <div class='st ok'><small>Encontrados</small><b>${cnt('ok')} · ${BRL(sum('ok'))}</b></div>
+  <div class='st pe'><small>Pendentes</small><b>${cnt('pe')} · ${BRL(sum('pe'))}</b></div>
+  <div class='st nf'><small>Não encontrados</small><b>${cnt('nf')} · ${BRL(sum('nf'))}</b></div>
+  ${BK?`<div class='st ${sem?'nf':'ok'}'><small>Vendas sem crédito no banco</small><b>${sem}</b></div><div class='st ${PX.orph.length?'pe':'ok'}'><small>Créditos do banco sem venda Pix</small><b>${PX.orph.length} · ${BRL(nb)}</b></div>`:''}</div></div>`;
+  $('xTb').innerHTML=`<thead><tr><th>Data/hora</th><th>CB</th><th>Unidade</th><th>Pagador</th><th class='n'>Valor</th><th class='n'>Reembolso</th><th>Crédito no banco</th><th>Situação</th><th>Ação</th></tr></thead><tbody>`+xVis().map(([p,s])=>`<tr class='${s}'><td>${p.dt}</td><td>${p.est.replace('CB-','').slice(0,4)}</td><td>${UN[p.term]||p.term}</td><td>${p.nome}</td><td class='n'>${BRL(p.v)}</td><td class='n'>${p.re?BRL(p.re):''}</td><td>${!BK?'—':p.b?(p.kind==='nome'?'✔ ':'≈ só pelo valor · ')+BRL(p.b.v):'✖ não achei no extrato'}</td><td><span class='tag ${s}'>${SN[s]}</span></td><td>${btn(xk(p),s)}</td></tr>`).join('')+'</tbody>';
+  $('xOrW').hidden=!PX.orph.length;
+  $('xOr').innerHTML=`<thead><tr><th>Data</th><th>Histórico / origem</th><th class='n'>Valor</th><th>Situação</th><th>Ação</th></tr></thead><tbody>`+PX.orph.map(b=>{const s=stOf(b);return `<tr class='${s}'><td>${b.d.slice(0,5)}</td><td>${b.desc}</td><td class='n'>${BRL(b.s)}</td><td><span class='tag ${s}'>${SN[s]}</span></td><td>${btn(b.key,s)}</td></tr>`}).join('')+'</tbody>';
+}
+const xTg=e=>{const x=e.target.closest('button');if(!x)return;const k=x.dataset.k;if(marks[k]===x.dataset.m)delete marks[k];else marks[k]=x.dataset.m;save();xView()};
+$('xTb').onclick=xTg;$('xOr').onclick=xTg;
+['xS'].forEach(i=>$(i).onchange=()=>PX&&xView());$('xQ').oninput=()=>PX&&xView();
+$('xAll').onclick=()=>{xVis().forEach(([p])=>{const k=xk(p);if(!marks[k])marks[k]='ok'});save();xView()};
+$('fPix').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{PX=parsePix(await f.text());if(!PX.length)throw new Error('nenhuma venda Pix encontrada');pixMatch();$('xList').hidden=false;
+    $('xMsg').textContent=PX.length+' vendas Pix carregadas'+(BK?'.':'. Carregue os extratos na aba Conciliação bancária para achar os créditos no banco.');xView()}
+  catch(err){$('xMsg').textContent='Erro: '+err.message}};
+
+let CT=1;function tab(n){CT=n;document.querySelectorAll('.tc').forEach(x=>x.hidden=n!==1);$('tabRes').hidden=n!==2;$('tabCon').hidden=n!==3;$('tabPix').hidden=n!==4;$('fCard').hidden=n>2;['tab1','tab2','tab3','tab4'].forEach((id,i)=>$(id).className=n===i+1?'pri':'');if(n<=2)render();if(n===3&&BK&&UX)cView();if(n===4&&PX){pixMatch();xView()}}
+$('bkS').onclick=()=>{const t=JSON.stringify({v:2,marks,rows,PX:PX&&PX.map(({b,kind,...p})=>p),BK:BK&&{...BK,E:BK.E.map(({rows,auto,uni,sug,...b})=>b)},UX}),n='conciliacao-progresso-'+new Date().toISOString().slice(0,10)+'.json';
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download=n;document.body.appendChild(a);a.click();a.remove();$('bkM').textContent='Progresso salvo ('+Object.keys(marks).length+' marcações)'}catch(e){prompt('Copie e guarde este texto:',t)}};
+$('bkL').onclick=()=>$('bkF').click();
+function initRows(msg){const dates=[...new Set(rows.map(r=>r.pag))].sort((a,b)=>dkey(b).localeCompare(dkey(a)));fill($('fDate'),dates,'Todas as datas');fill($('fEst'),[...new Set(rows.map(r=>r.est))],'Todos');fill($('fTerm'),[...new Set(rows.map(r=>r.unid))].sort(),'Todas');$('app').hidden=false;$('msg').textContent=msg;render()}
+async function loadProg(f){
+  try{const d=JSON.parse(await f.text()),n=Object.keys(d.marks||{}).length;if(!d.marks)throw 0;Object.assign(marks,d.marks);save();
+    if(d.rows&&d.rows.length){rows=d.rows;initRows('Progresso carregado do arquivo — '+rows.length+' lançamentos de cartão')}
+    else if($('app').hidden){$('msg').textContent='Marcações carregadas ('+n+'). Agora carregue o CSV de cartão.';return}
+    else render();
+    if(d.PX){PX=d.PX;$('xList').hidden=false;$('xMsg').textContent=PX.length+' vendas Pix (do progresso salvo)'}
+    if(d.BK)BK=d.BK;if(d.UX)UX=d.UX;
+    if(BK&&UX){match();$('cList').hidden=false;cView();$('cMsg').textContent='Banco: '+BK.E.length+' lançamentos · Unilab: '+UX.E.length+' lançamentos (do progresso salvo)'}
+    if(PX){pixMatch();xView()}
+    $('bkM').textContent='Progresso carregado ('+n+' marcações)'}
+  catch(err){$('msg').textContent='Arquivo de progresso inválido ou sem dados';$('bkM').textContent='Arquivo de progresso inválido'}
+}
+$('bkF').onchange=e=>{const f=e.target.files[0];if(f)loadProg(f);e.target.value=''};
+$('bkL0').onclick=()=>$('bkF0').click();
+$('bkF0').onchange=e=>{const f=e.target.files[0];if(f)loadProg(f);e.target.value=''};
+$('tab1').onclick=()=>tab(1);$('tab2').onclick=()=>tab(2);$('tab3').onclick=()=>tab(3);$('tab4').onclick=()=>tab(4);
+
+$('tb').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  const k=b.dataset.k,m=b.dataset.m;marks[k]=marks[k]===m?undefined:m;if(!marks[k])delete marks[k];save();render()};
+['fDate','fEst','fTerm','fForma','fSt','fOrd'].forEach(i=>$(i).onchange=render);
+$('fQ').oninput=render;$('fAut').oninput=render;$('bank').oninput=render;
+$('allOk').onclick=()=>{visible().forEach(r=>{if(!marks[r.key])marks[r.key]='ok'});save();render()};
+let clrT;$('clr').onclick=()=>{const b=$('clr'),lb='↺ Limpar marcações visíveis';if(!b.dataset.c){b.dataset.c='1';b.textContent='⚠ Clique de novo para confirmar';clrT=setTimeout(()=>{delete b.dataset.c;b.textContent=lb},4000);return}clearTimeout(clrT);delete b.dataset.c;b.textContent=lb;visible().forEach(r=>delete marks[r.key]);save();render()};
+$('exp').onclick=()=>{
+  const h=['Data/hora','CB','Unidade','FP','Parcelas','AUT','Valor bruto','Valor líquido','Situação'];
+  const lab={ok:'Encontrada',nf:'Não encontrada',pe:'Pendente'};
+  const csv=[h.join(';')].concat(visible().map(r=>[r.dt,r.est.replace('CB-','').slice(0,4),r.unid,r.forma,(r.forma==='Débito'?'':(parseInt(r.tp)||1)+'x / '+(parseInt(r.parc)||1)),r.aut,r.bruto.toFixed(2).replace('.',','),r.liq.toFixed(2).replace('.',','),lab[marks[r.key]||'pe']].join(';'))).join('\r\n');
+  const t=$('out');t.hidden=false;t.value=csv;t.focus();t.select();
+  try{navigator.clipboard.writeText(csv).then(()=>$('cnt').textContent='Copiado! Cole no Excel/Planilhas.')}catch(e){}
+};
+</script>
+</body>
+</html>
